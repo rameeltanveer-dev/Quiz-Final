@@ -1,4 +1,4 @@
-/* script.js — Final quiz logic with 3-level celebrations (0-69,70-89,90-100 VIP) */
+/* script.js — Final quiz logic with ID fix for 'Start Quiz' button */
 
 /* ---------- CONFIG ---------- */
 const TOTAL_MINUTES = 40;
@@ -6,6 +6,10 @@ const PER_QUESTION_SECONDS = 40;
 const TOTAL_SECONDS = TOTAL_MINUTES * 60;
 const FIXED_WHATSAPP = '03196393269';
 const FIXED_EMAIL = 'rameeltanveer19@gmail.com';
+
+// 💡 TESTING MODE: Agar aap baar baar test karna chahte hain, toh isse 'true' rakhen.
+// Final deployment se pehle 'false' kar den.
+const IS_TESTING_MODE = true; 
 
 /* ---------- QUESTION BANK (40+ items) ---------- */
 const BANK = [
@@ -45,7 +49,7 @@ const BANK = [
   {q:"Which rule imports fonts?", a:"@import url('font-link');", o:["@font-face","@import url('font-link');","@font-link","@font"], topic:"Misc"},
   {q:"How to hide element but keep space?", a:"visibility: hidden;", o:["display:none;","visibility:hidden;","opacity:0;","hide:true;"], topic:"Misc"},
   {q:"Which hides element completely and removes space?", a:"display: none;", o:["visibility:hidden;","display:none;","opacity:0;","hidden:true;"], topic:"Misc"},
-  {q:"How to write CSS comment?", a:"/* comment */", o:["// comment","/* comment */","<!-- comment -->","# comment"], topic:"Misc"},
+  {q:"How to write CSS comment?", a:"/* comment */", o:["// comment","/* comment */","","# comment"], topic:"Misc"},
   {q:"What does box-sizing:border-box do?", a:"includes padding in width", o:["excludes padding","includes padding in width","collapses margin","adds border outside"], topic:"Misc"},
   {q:"Which selects class in CSS?", a:".classname", o:["#classname",".classname","classname","*classname"], topic:"Misc"},
   {q:"Which property centers inline text?", a:"text-align", o:["align","text-align","center-inline","inline-align"], topic:"Misc"}
@@ -58,10 +62,11 @@ let current = 0, correct = 0, wrong = 0, perTopic = {};
 let totalSecondsLeft = TOTAL_SECONDS, perQuestionSecondsLeft = PER_QUESTION_SECONDS;
 let globalTimerId = null, questionTimerId = null, answeredThisQ = false;
 
-/* ---------- UI refs ---------- */
+/* ---------- UI refs (IDs FIXED) ---------- */
 const loginSection = document.getElementById('loginSection');
 const nameInput = document.getElementById('nameInput');
-const startWithName = document.getElementById('startWithName');
+// 💡 FIX: 'startWithName' ko 'startQuiz' se badla
+const startQuizBtn = document.getElementById('startQuiz'); 
 const loginMsg = document.getElementById('loginMsg');
 const quizApp = document.getElementById('quizApp');
 const progressText = document.getElementById('progressText');
@@ -81,30 +86,48 @@ const modalEmoji = document.getElementById('modalEmoji');
 const modalClose = document.getElementById('modalClose');
 const modalDetails = document.getElementById('modalDetails');
 
-/* ---------- HELPERS ---------- */
+/* ---------- HELPERS (canAttempt/markAttempt updated for TESTING MODE) ---------- */
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a; }
 function formatTime(s){ const m=Math.floor(s/60).toString().padStart(2,'0'); const sec=(s%60).toString().padStart(2,'0'); return `${m}:${sec}`; }
-function canAttempt(name){ const key = `quiz_attempt_${name.toLowerCase()}`; return !localStorage.getItem(key); }
-function markAttempt(name){ const key = `quiz_attempt_${name.toLowerCase()}`; localStorage.setItem(key, Date.now().toString()); }
 
-/* ---------- START CLICK ---------- */
-startWithName.addEventListener('click', ()=>{
+function canAttempt(name){ 
+  // Agar TESTING MODE on hai, toh hamesha allow karo
+  if (IS_TESTING_MODE) {
+    return true; 
+  }
+  const key = `quiz_attempt_${name.toLowerCase()}`; return !localStorage.getItem(key); 
+}
+
+function markAttempt(name){ 
+  // Agar TESTING MODE on hai, toh Local Storage mein save na karo
+  if (IS_TESTING_MODE) {
+    return;
+  }
+  const key = `quiz_attempt_${name.toLowerCase()}`; localStorage.setItem(key, Date.now().toString()); 
+}
+
+/* ---------- START CLICK (ID FIXED) ---------- */
+// 💡 FIX: startQuizBtn par listener laga diya
+startQuizBtn.addEventListener('click', ()=>{
   const val = nameInput.value.trim();
-  loginMsg.textContent = "";if (!val) { 
-  // If no name entered — اگر نام نہیں لکھا گیا
-  loginMsg.textContent = "براہِ کرم اپنا نام لکھیں / Please enter your name"; 
-  return; 
-}
-if (!canAttempt(val)) { 
-  // If this device has already attempted the quiz with this name — اگر اس نام سے اس ڈیوائس پر پہلے ہی کوئز حل کیا جا چکا ہے
-  loginMsg.textContent = "اس نام سے اس ڈیوائس پر پہلے ہی کوئز حل کیا جا چکا ہے / This name has already been used on this device"; 
-  return; 
-}
+  loginMsg.textContent = "";
+  
+  if (!val) { 
+    // If no name entered — اگر نام نہیں لکھا گیا
+    loginMsg.textContent = "براہِ کرم اپنا نام لکھیں / Please enter your name"; 
+    return; 
+  }
+
+  if (!canAttempt(val)) { 
+    // If this device has already attempted the quiz with this name — اگر اس نام سے اس ڈیوائس پر پہلے ہی کوئز حل کیا جا چکا ہے
+    loginMsg.textContent = "اس نام سے اس ڈیوائس پر پہلے ہی کوئز حل کیا جا چکا ہے / This name has already been used on this device"; 
+    return; 
+  }
+  
   userName = val; markAttempt(userName); beginQuiz();
 });
 
-
-/* ---------- BEGIN QUIZ ---------- */
+/* ---------- BEGIN QUIZ (UPDATED) ---------- */
 function beginQuiz(){
   questions = shuffle(BANK.slice()).slice(0,40).map(q => ({...q}));
   current = 0; correct = 0; wrong = 0; perTopic = {};
@@ -112,6 +135,9 @@ function beginQuiz(){
 
   loginSection.classList.add('hidden');
   quizApp.classList.remove('hidden');
+
+  // NAYI LINE: Autoplay ke baad volume bahut kam kar den
+  try { fireworksAudio.volume = 0.01; } catch(e){} 
 
   totalSecondsLeft = TOTAL_SECONDS; perQuestionSecondsLeft = PER_QUESTION_SECONDS;
   globalTimerEl.textContent = formatTime(totalSecondsLeft);
@@ -214,7 +240,7 @@ function goNextAfterAuto(){
   } else finishQuiz();
 }
 
-/* ---------- FINISH QUIZ ---------- */
+/* ---------- FINISH QUIZ (UPDATED) ---------- */
 function finishQuiz(){
   stopGlobalTimer(); stopQuestionTimer();
   const total = questions.length;
@@ -225,9 +251,9 @@ function finishQuiz(){
     // VIP
     showResultModal({
       title: "👑 VIP فتح! / VIP Victory!", 
-message: `زبردست! آپ نے ${percent}% حاصل کیے — VIP Celebration! / Amazing! You scored ${percent}% — VIP Celebration!`, 
-emoji: "👑", 
-type: "vip"
+      message: `زبردست! آپ نے ${percent}% حاصل کیے — VIP Celebration! / Amazing! You scored ${percent}% — VIP Celebration!`, 
+      emoji: "👑", 
+      type: "vip"
     });
     // VIP sound using WebAudio
     try { playVIPMelody(); } catch(e){ console.warn(e); }
@@ -236,22 +262,28 @@ type: "vip"
     // Normal celebration
     showResultModal({
       title: "🎉 مبارک ہو! / Congratulations!", 
-message: `آپ نے ${percent}% حاصل کیے — شاندار کارکردگی! / You scored ${percent}% — Excellent Performance!`, 
-emoji: "🎊",
+      message: `آپ نے ${percent}% حاصل کیے — شاندار کارکردگی! / You scored ${percent}% — Excellent Performance!`, 
+      emoji: "🎊",
       type: "success"
     });
-    try { fireworksAudio.currentTime = 0; fireworksAudio.play(); } catch(e){}
+    // NAYI LINE: Fireworks celebration ke liye volume badha den
+    try { fireworksAudio.volume = 0.5; } catch(e){} 
     playFireworks();
   } else {
     // Better luck
     showResultModal({
       title: "😌 کوشش جاری رکھیں / Keep Trying", 
-message: `آپ نے ${percent}% حاصل کیے۔ کوشش کریں، آپ بہتر کریں گے! / You scored ${percent}%. Keep trying, you can do better!`, 
-emoji: "✨",
+      message: `آپ نے ${percent}% حاصل کیے۔ کوشش کریں، آپ بہتر کریں گے! / You scored ${percent}%. Keep trying, you can do better!`, 
+      emoji: "✨",
       type: "soft"
     });
     playSoftConfetti();
   }
+
+  // NAYI LINE: Celebration ke 6 seconds baad volume dobara kam kar den
+  setTimeout(() => {
+     try { fireworksAudio.volume = 0.01; } catch(e){}
+  }, 6000); // 6 seconds baad
 
   // Open result in new tab (detailed)
   const resultWindow = window.open('','_blank');
@@ -279,7 +311,7 @@ emoji: "✨",
   resultWindow.document.write(resultHtml);
   resultWindow.document.close();
 
-  // Send results via WhatsApp and Gmail
+  // Send results via WhatsApp and Gmail (Ab yeh links block nahi honge)
   const waMsg = encodeURIComponent(`Quiz Result for ${userName}: ${percent}% — Correct:${correct}, Wrong:${wrong}`);
   window.open(`https://wa.me/${FIXED_WHATSAPP}?text=${waMsg}`, '_blank');
   const mailMsg = encodeURIComponent(`Quiz Result for ${userName}: ${percent}% — Correct:${correct}, Wrong:${wrong}`);
@@ -369,6 +401,7 @@ function playVIPConfetti(){
     setTimeout(()=> el.remove(), 8000);
   }
   setTimeout(()=> fireworksContainer.classList.add('hidden'), 7800);
+}
 /* ---------- VIP Melodic Flourish (WebAudio) ---------- */
 function playVIPMelody(){
   if(!window.AudioContext && !window.webkitAudioContext) return;
